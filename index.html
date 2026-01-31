@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国动画公司分布地图</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/extension/bmap.min.js"></script>
+    <script>
+        // Load China map data
+        fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+            .then(response => response.json())
+            .then(chinaJson => {
+                echarts.registerMap('china', chinaJson);
+                window.chinaMapReady = true;
+            })
+            .catch(err => {
+                console.error('Failed to load China map:', err);
+            });
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #0a0e27;
+            color: white;
+            overflow: hidden;
+        }
+        #map-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #map-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            z-index: 1000;
+        }
+        .info-panel h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .info-panel .stat {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            pointer-events: none;
+            background: transparent;
+        }
+        .search-bar {
+            width: 400px;
+            padding: 12px 20px;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 25px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+        .search-bar::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .search-bar:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+        }
+        .search-results {
+            position: absolute;
+            top: 55px;
+            left: 0;
+            right: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(10, 14, 39, 0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            display: none;
+            pointer-events: auto;
+        }
+        .search-results.active {
+            display: block;
+        }
+        .search-result-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-result-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        .search-result-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 3px;
+        }
+        .search-result-location {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        .search-results::-webkit-scrollbar {
+            width: 6px;
+        }
+        .search-results::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 3px;
+        }
+        .studio-list {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 220px;
+            max-height: calc(100vh - 40px);
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+        .studio-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .studio-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        .studio-list::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 3px;
+        }
+        .studio-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+        .studio-list.active {
+            display: block;
+        }
+        .studio-list h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        .studio-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .studio-card:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+        .studio-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        .studio-info {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        .legend-color {
+            width: 20px;
+            height: 15px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .footer-icon-btn {
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            color: rgba(255, 255, 255, 0.7);
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .footer-icon-btn:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(10, 14, 39, 0.98);
+        }
+        .footer-content {
+            display: none;
+            position: absolute;
+            bottom: 50px;
+            right: 0;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            font-size: 0.85rem;
+            max-width: 300px;
+            min-width: 250px;
+        }
+        .footer-content.active {
+            display: block;
+        }
+        .footer-content div {
+            margin: 8px 0;
+        }
+        .contribute-btn {
+            position: absolute;
+            bottom: 70px;
+            right: 20px;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            color: rgba(255, 255, 255, 0.7);
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .contribute-btn:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(10, 14, 39, 0.98);
+        }
+        .github-btn {
+            position: absolute;
+            bottom: 120px;
+            right: 20px;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            color: rgba(255, 255, 255, 0.7);
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .github-btn:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(10, 14, 39, 0.98);
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container">
+        <div class="info-panel">
+            <h1>中国动画公司分布地图</h1>
+            <div class="stat">已收录工作室: <strong id="total">-</strong></div>
+            <div class="stat">更新日期: <strong>2026-01-31</strong></div>
+        </div>
+        
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfTxABZjk1Qfed4xIIc9xCZMauCChjkXNy7P18PU6dC66zI7A/viewform?usp=publish-editor" target="_blank" class="contribute-btn" title="修改数据">
+            <i class="fas fa-edit"></i>
+        </a>
+        
+        <a href="#" target="_blank" class="github-btn" title="GitHub">
+            <i class="fab fa-github"></i>
+        </a>
+        
+        <div class="search-container">
+            <input type="text" class="search-bar" id="search-input" placeholder="搜索工作室名称...">
+            <div class="search-results" id="search-results"></div>
+        </div>
+        
+        <div id="map-canvas"></div>
+        
+        <div class="studio-list" id="studio-list">
+            <h2 id="province-name">-</h2>
+            <div id="studios"></div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item"><span class="legend-color" style="background: #1a2a6c;"></span> 1-5 家</div>
+            <div class="legend-item"><span class="legend-color" style="background: #2d4a9a;"></span> 6-10 家</div>
+            <div class="legend-item"><span class="legend-color" style="background: #4169c8;"></span> 11-15 家</div>
+            <div class="legend-item"><span class="legend-color" style="background: #667eea;"></span> 16-20 家</div>
+            <div class="legend-item"><span class="legend-color" style="background: #8b9eff;"></span> 20+ 家</div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-icon-btn" onclick="document.getElementById('footer-content').classList.toggle('active')" title="数据来源">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div id="footer-content" class="footer-content">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">数据来源</div>
+                <div>• <a href="https://mp.weixin.qq.com/s/9xUNeAFMufco9vG_Ml-4Bw" target="_blank" style="color: #667eea; text-decoration: none;">2025中国动画产业地图（剧集篇）</a></div>
+                <div>• <a href="https://docs.qq.com/sheet/DSHd0ZEZXSVFjY0N1?tab=BB08J2" target="_blank" style="color: #667eea; text-decoration: none;">中国动画公司信息</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let data = null;
+        let chart = null;
+
+        // Province name mapping
+        const cityToProvince = {
+            '北京': '北京', '上海': '上海', '天津': '天津', '重庆': '重庆',
+            '浙江杭州': '浙江', '杭州': '浙江', '衢州': '浙江', '绍兴': '浙江', '温州': '浙江',
+            '浙江衢州': '浙江', '浙江绍兴': '浙江', '浙江温州': '浙江',
+            '江苏苏州': '江苏', '苏州': '江苏', '南京': '江苏', '徐州': '江苏', '江苏徐州': '江苏',
+            '广东广州': '广东', '广州': '广东', '深圳': '广东', '广东深圳': '广东',
+            '四川成都': '四川', '成都': '四川',
+            '湖北武汉': '湖北', '武汉': '湖北',
+            '湖南长沙': '湖南', '长沙': '湖南',
+            '吉林长春': '吉林', '长春': '吉林',
+            '山东济南': '山东', '济南': '山东', '青岛': '山东',
+            '福建福州': '福建', '福州': '福建', '福建厦门': '福建', '厦门': '福建',
+            '河北石家庄': '河北', '石家庄': '河北',
+            '安徽宿州': '安徽', '宿州': '安徽',
+            '广西南宁': '广西', '南宁': '广西',
+            '辽宁沈阳': '辽宁', '沈阳': '辽宁', '大连': '辽宁'
+        };
+
+        async function init() {
+            try {
+                // Load data
+                const response = await fetch('data/public/info_cn.json');
+                if (!response.ok) throw new Error('Failed to load data');
+                
+                data = await response.json();
+                
+                // Update stats
+                document.getElementById('total').textContent = data.totalStudios;
+                
+                // Initialize map
+                initMap();
+                
+                // Setup search after data is loaded
+                setupSearch();
+            } catch (error) {
+                document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;"><div style="text-align:center;"><h2 style="color:#667eea;">NEW VERSION ERROR</h2><p>Error in map.html: ${error.message}</p><p>Stack: ${error.stack}</p><button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;">重新加载</button></div></div>`;
+                console.error('FULL ERROR DETAILS:', error);
+            }
+        }
+
+        function initMap() {
+            if (!echarts) {
+                throw new Error('ECharts not loaded');
+            }
+
+            if (!window.chinaMapReady) {
+                setTimeout(initMap, 100); // Wait for map to load
+                return;
+            }
+
+            chart = echarts.init(document.getElementById('map-canvas'));
+            
+            // Prepare map data
+            const provinceCount = {};
+            const provinceStudios = {}; // Store studio names for tooltip
+            data.provinces.forEach(p => {
+                const province = cityToProvince[p.province] || p.province;
+                provinceCount[province] = (provinceCount[province] || 0) + p.studios.length;
+                if (!provinceStudios[province]) {
+                    provinceStudios[province] = [];
+                }
+                provinceStudios[province].push(...p.studios.map(s => s.name));
+            });
+            
+            // Convert to GeoJSON format (add 省/市 suffix)
+            const provinceNameMapping = {
+                '北京': '北京市', '上海': '上海市', '天津': '天津市', '重庆': '重庆市',
+                '浙江': '浙江省', '江苏': '江苏省', '广东': '广东省', '四川': '四川省',
+                '湖北': '湖北省', '湖南': '湖南省', '吉林': '吉林省', '山东': '山东省',
+                '福建': '福建省', '河北': '河北省', '安徽': '安徽省', '广西': '广西壮族自治区',
+                '辽宁': '辽宁省'
+            };
+            
+            const mapData = Object.keys(provinceCount).map(name => ({
+                name: provinceNameMapping[name] || name,
+                value: provinceCount[name],
+                originalName: name,
+                studios: provinceStudios[name]
+            }));
+
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(10, 14, 39, 0.95)',
+                    borderColor: 'rgba(102, 126, 234, 0.5)',
+                    borderWidth: 1,
+                    textStyle: { color: '#fff' },
+                    formatter: params => {
+                        if (params.data && params.data.studios) {
+                            const studios = params.data.studios;
+                            const perColumn = 10;
+                            const columns = Math.ceil(studios.length / perColumn);
+                            
+                            let html = `<strong>${params.name}</strong><br/>工作室: ${params.data.value} 家<br/><br/>`;
+                            html += '<div style="display: flex; gap: 20px;">';
+                            
+                            for (let col = 0; col < columns; col++) {
+                                const start = col * perColumn;
+                                const end = Math.min(start + perColumn, studios.length);
+                                const columnStudios = studios.slice(start, end);
+                                
+                                html += '<div style="flex: 1;">';
+                                html += columnStudios.map(s => `• ${s}`).join('<br/>');
+                                html += '</div>';
+                            }
+                            
+                            html += '</div>';
+                            return html;
+                        }
+                        return `<strong>${params.name}</strong><br/>暂无数据`;
+                    }
+                },
+                visualMap: {
+                    show: false,
+                    min: 0,
+                    max: 30,
+                    inRange: {
+                        color: ['#1a2a6c', '#2d4a9a', '#4169c8', '#667eea', '#8b9eff']
+                    }
+                },
+                geo: {
+                    map: 'china',
+                    roam: true,
+                    scaleLimit: { min: 1, max: 10 },
+                    zoom: 1.2,
+                    center: [105, 35],
+                    itemStyle: {
+                        areaColor: 'rgba(26, 42, 108, 0.3)',
+                        borderColor: 'rgba(102, 126, 234, 0.5)',
+                        borderWidth: 1
+                    },
+                    emphasis: {
+                        disabled: true
+                    },
+                    select: {
+                        itemStyle: {
+                            areaColor: 'rgba(102, 126, 234, 0.6)',
+                            borderColor: '#667eea',
+                            borderWidth: 2
+                        },
+                        label: {
+                            color: '#fff',
+                            fontSize: 14,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    label: {
+                        show: true,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontSize: 11
+                    }
+                },
+                series: [{
+                    name: '工作室数量',
+                    type: 'map',
+                    map: 'china',
+                    geoIndex: 0,
+                    data: mapData
+                }]
+            };
+
+            chart.setOption(option);
+            
+            // Add middle mouse button drag support by simulating left click
+            const mapCanvas = document.getElementById('map-canvas');
+            let middleMouseDown = false;
+            
+            mapCanvas.addEventListener('mousedown', (e) => {
+                if (e.button === 1) { // Middle mouse button
+                    e.preventDefault();
+                    middleMouseDown = true;
+                    
+                    // Create and dispatch a synthetic left mouse button event
+                    const leftClickEvent = new MouseEvent('mousedown', {
+                        button: 0, // Left button
+                        clientX: e.clientX,
+                        clientY: e.clientY,
+                        bubbles: true
+                    });
+                    
+                    // Get the ECharts canvas element
+                    const canvas = mapCanvas.querySelector('canvas');
+                    if (canvas) {
+                        canvas.dispatchEvent(leftClickEvent);
+                    }
+                    
+                    mapCanvas.style.cursor = 'grabbing';
+                }
+            });
+            
+            mapCanvas.addEventListener('mousemove', (e) => {
+                if (middleMouseDown) {
+                    // Forward as left button move
+                    const moveEvent = new MouseEvent('mousemove', {
+                        button: 0,
+                        clientX: e.clientX,
+                        clientY: e.clientY,
+                        bubbles: true
+                    });
+                    
+                    const canvas = mapCanvas.querySelector('canvas');
+                    if (canvas) {
+                        canvas.dispatchEvent(moveEvent);
+                    }
+                }
+            });
+            
+            mapCanvas.addEventListener('mouseup', (e) => {
+                if (e.button === 1 && middleMouseDown) {
+                    e.preventDefault();
+                    middleMouseDown = false;
+                    
+                    // Dispatch synthetic mouseup
+                    const upEvent = new MouseEvent('mouseup', {
+                        button: 0,
+                        clientX: e.clientX,
+                        clientY: e.clientY,
+                        bubbles: true
+                    });
+                    
+                    const canvas = mapCanvas.querySelector('canvas');
+                    if (canvas) {
+                        canvas.dispatchEvent(upEvent);
+                    }
+                    
+                    mapCanvas.style.cursor = 'default';
+                }
+            });
+            
+            mapCanvas.addEventListener('contextmenu', (e) => {
+                if (middleMouseDown) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Click handler
+            window.currentProvince = null;
+            
+            chart.on('click', params => {
+                if (params.componentType === 'series' && params.data && params.data.studios) {
+                    const provinceName = params.name;
+                    
+                    // If clicking the same province, close the panel
+                    if (window.currentProvince === provinceName) {
+                        document.getElementById('studio-list').classList.remove('active');
+                        // Clear highlight by downplaying the specific province
+                        chart.dispatchAction({
+                            type: 'downplay',
+                            seriesIndex: 0,
+                            name: provinceName
+                        });
+                        window.currentProvince = null;
+                        return;
+                    }
+                    
+                    // Downplay the previous province first
+                    if (window.currentProvince) {
+                        chart.dispatchAction({
+                            type: 'downplay',
+                            seriesIndex: 0,
+                            name: window.currentProvince
+                        });
+                    }
+                    
+                    window.currentProvince = provinceName;
+                    const studios = params.data.studios;
+                    
+                    // Select the clicked province
+                    chart.dispatchAction({
+                        type: 'select',
+                        seriesIndex: 0,
+                        name: provinceName
+                    });
+                    
+                    document.getElementById('province-name').textContent = `${params.name} · ${params.data.value} 家`;
+                    
+                    const html = '<div style="user-select: text; font-size: 0.9rem; line-height: 1.8;">' + 
+                                 studios.map(s => `• ${s}`).join('<br/>') + 
+                                 '</div>';
+                    
+                    document.getElementById('studios').innerHTML = html;
+                    document.getElementById('studio-list').classList.add('active');
+                }
+            });
+            
+            window.addEventListener('resize', () => chart.resize());
+            
+            // ESC key to close studio list
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.getElementById('studio-list').classList.contains('active')) {
+                    document.getElementById('studio-list').classList.remove('active');
+                    chart.dispatchAction({
+                        type: 'unselect',
+                        seriesIndex: 0
+                    });
+                    window.currentProvince = null;
+                }
+            });
+        }
+
+        // Search functionality
+        function setupSearch() {
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+            
+            // Build searchable data array
+            const allStudios = [];
+            data.provinces.forEach(p => {
+                p.studios.forEach(s => {
+                    allStudios.push({
+                        name: s.name,
+                        province: p.province,
+                        city: s.city || p.province,
+                        location: s.location,
+                        year: s.year
+                    });
+                });
+            });
+            
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim().toLowerCase();
+                
+                if (!query) {
+                    searchResults.classList.remove('active');
+                    return;
+                }
+                
+                const matches = allStudios.filter(s => 
+                    s.name.toLowerCase().includes(query)
+                ).slice(0, 20); // Limit to 20 results
+                
+                if (matches.length === 0) {
+                    searchResults.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.5;">未找到结果</div>';
+                    searchResults.classList.add('active');
+                    return;
+                }
+                
+                searchResults.innerHTML = matches.map(s => `
+                    <div class="search-result-item" data-province="${s.province}" data-studio="${s.name}">
+                        <div class="search-result-name">${s.name}</div>
+                        <div class="search-result-location">${s.city || s.province}${s.year ? ' · ' + s.year : ''}</div>
+                    </div>
+                `).join('');
+                
+                searchResults.classList.add('active');
+                
+                // Add click handlers to results
+                searchResults.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const province = item.getAttribute('data-province');
+                        const studioName = item.getAttribute('data-studio');
+                        // Find and trigger province click
+                        const provinceNameMapping = {
+                            '北京': '北京市', '上海': '上海市', '天津': '天津市', '重庆': '重庆市',
+                            '浙江': '浙江省', '江苏': '江苏省', '广东': '广东省', '四川': '四川省',
+                            '湖北': '湖北省', '湖南': '湖南省', '吉林': '吉林省', '山东': '山东省',
+                            '福建': '福建省', '河北': '河北省', '安徽': '安徽省', '广西': '广西壮族自治区',
+                            '辽宁': '辽宁省'
+                        };
+                        const mappedProvince = provinceNameMapping[province] || province;
+                        
+                        // Trigger the click event programmatically
+                        const mapData = chart.getOption().series[0].data;
+                        const provinceData = mapData.find(d => d.name === mappedProvince);
+                        if (provinceData) {
+                            // Manually trigger the province display with studio highlight
+                            showProvinceStudios(mappedProvince, provinceData.studios, provinceData.value, studioName);
+                        }
+                        
+                        searchInput.value = '';
+                        searchResults.classList.remove('active');
+                    });
+                });
+            });
+            
+            // Close search results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    searchResults.classList.remove('active');
+                }
+            });
+        }
+        
+        function showProvinceStudios(provinceName, studios, count, highlightStudio = null) {
+            // Downplay all provinces first to ensure clean state
+            chart.dispatchAction({
+                type: 'downplay',
+                seriesIndex: 0
+            });
+            
+            // Unselect all first
+            chart.dispatchAction({
+                type: 'unselect',
+                seriesIndex: 0
+            });
+            
+            window.currentProvince = provinceName;
+            
+            // Select the province
+            chart.dispatchAction({
+                type: 'select',
+                seriesIndex: 0,
+                name: provinceName
+            });
+            
+            document.getElementById('province-name').textContent = `${provinceName} · ${count} 家`;
+            
+            const html = '<div style="user-select: text; font-size: 0.9rem; line-height: 1.8;">' + 
+                         studios.map(s => {
+                             const isHighlight = highlightStudio && s === highlightStudio;
+                             return `<div style="${isHighlight ? 'background: rgba(102, 126, 234, 0.3); padding: 3px 8px; margin: -3px -8px; border-radius: 4px;' : ''}">• ${s}</div>`;
+                         }).join('') + 
+                         '</div>';
+            
+            document.getElementById('studios').innerHTML = html;
+            document.getElementById('studio-list').classList.add('active');
+            
+            // Scroll to highlighted studio if exists
+            if (highlightStudio) {
+                setTimeout(() => {
+                    const studiosDiv = document.getElementById('studios');
+                    const highlighted = studiosDiv.querySelector('[style*="background: rgba(102, 126, 234, 0.3)"]');
+                    if (highlighted) {
+                        highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        }
+
+        // Close studio list when clicking outside or clicking map
+        document.getElementById('map-canvas').addEventListener('click', (e) => {
+            // Only close if clicking the canvas itself, not the chart
+            if (e.target.id === 'map-canvas') {
+                document.getElementById('studio-list').classList.remove('active');
+                // Clear province selection
+                chart.dispatchAction({
+                    type: 'unselect',
+                    seriesIndex: 0
+                });
+                window.currentProvince = null;
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+CN
+data
+data/private
+archive
+utils
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build outputs (if any)
+dist/
+build/
+
+# Don't ignore data directory
+!data/
+!data/*.json
