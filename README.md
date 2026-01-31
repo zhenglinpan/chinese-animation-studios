@@ -2,6 +2,8 @@
 
 一个交互式的中国动画工作室地图，直观展示全国各地的动画制作公司分布情况。
 
+[地图链接](https://zhenglinpan.github.io/chinese-animation-studios/)
+
 ## 📖 项目介绍
 
 本项目旨在为动画行业从业者和爱好者提供一个便捷的工具，帮助大家：
