@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/extension/bmap.min.js"></script>
     <script>
         // Load China map data
-        fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+        fetch('china_map.json')
             .then(response => response.json())
             .then(chinaJson => {
                 echarts.registerMap('china', chinaJson);
