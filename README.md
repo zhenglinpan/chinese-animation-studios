@@ -1,4 +1,4 @@
-# 中国动画产业地图
+# 中国动画公司分布地图
 
 一个交互式的中国动画工作室地图，直观展示全国各地的动画制作公司分布情况。
 
@@ -23,11 +23,6 @@
 ### 数据来源
 - [2025中国动画产业地图（剧集篇）](https://mp.weixin.qq.com/s/9xUNeAFMufco9vG_Ml-4Bw)
 - [动画人互助协会](https://docs.qq.com/sheet/DSHd0ZEZXSVFjY0N1?tab=BB08J2)
-
-### 技术支持
-- [ECharts](https://echarts.apache.org/) - 强大的可视化图表库
-- [阿里云 DataV](https://geo.datav.aliyun.com/) - 提供中国地图 GeoJSON 数据
-- [Font Awesome](https://fontawesome.com/) - 图标库
 
 ### 特别感谢
 感谢所有为动画行业做出贡献的从业者，以及所有帮助收集、整理、完善工作室数据的朋友们！
